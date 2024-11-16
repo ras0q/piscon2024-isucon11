@@ -1251,7 +1251,7 @@ var conditionsChan = make(chan []IsuCondition, 10000)
 func runPostIsuConditionWorker() {
 	conditionsQueue := make([]IsuCondition, 0, 10000)
 
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
