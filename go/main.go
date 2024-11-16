@@ -24,6 +24,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
+
+	"github.com/kaz/pprotein/integration/echov4"
 )
 
 const (
@@ -236,6 +238,9 @@ func main() {
 	e.GET("/register", getIndex)
 	e.Static("/assets", frontendContentsPath+"/assets")
 
+	// TODO: remove later
+	echov4.EnableDebugHandler(e)
+
 	mySQLConnectionData = NewMySQLConnectionEnv()
 
 	var err error
@@ -330,6 +335,13 @@ func postInitialize(c echo.Context) error {
 		c.Logger().Errorf("db error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+
+	// TODO: remove later
+	go func() {
+		if _, err := http.Get("https://ras-pprotein2.trap.show/api/group/collect"); err != nil {
+			c.Logger().Errorf("failed to communicate with pprotein: %v", err)
+		}
+	}()
 
 	return c.JSON(http.StatusOK, InitializeResponse{
 		Language: "go",
