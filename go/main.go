@@ -303,7 +303,7 @@ func getJIAServiceURL(_ *sqlx.Tx) string {
 
 var characterList []string
 var jiaServiceURL string
-var userMap = make(map[string]struct{})
+var userMap map[string]struct{}
 
 // POST /initialize
 // サービスを初期化
