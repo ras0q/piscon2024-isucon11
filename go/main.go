@@ -1096,31 +1096,43 @@ func getTrend(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	allIsus := []Isu{}
+	err = db.Select(&allIsus, "SELECT * FROM `isu`")
+	if err != nil {
+		c.Logger().Errorf("db error: %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	isusGroupByCharacter := map[string][]Isu{}
+	for _, isu := range allIsus {
+		isusGroupByCharacter[isu.Character] = append(isusGroupByCharacter[isu.Character], isu)
+	}
+
+	allConditions := []IsuCondition{}
+	err = db.Select(&allConditions, "SELECT * FROM `isu_condition` ORDER BY timestamp DESC")
+	if err != nil {
+		c.Logger().Errorf("db error: %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	conditionsGroupByIsu := map[string][]IsuCondition{}
+	for _, condition := range allConditions {
+		conditionsGroupByIsu[condition.JIAIsuUUID] = append(conditionsGroupByIsu[condition.JIAIsuUUID], condition)
+	}
+
 	res := []TrendResponse{}
 
 	for _, character := range characterList {
-		isuList := []Isu{}
-		err = db.Select(&isuList,
-			"SELECT * FROM `isu` WHERE `character` = ?",
-			character.Character,
-		)
-		if err != nil {
-			c.Logger().Errorf("db error: %v", err)
-			return c.NoContent(http.StatusInternalServerError)
+		isuList, ok := isusGroupByCharacter[character.Character]
+		if !ok {
+			continue
 		}
 
 		characterInfoIsuConditions := []*TrendCondition{}
 		characterWarningIsuConditions := []*TrendCondition{}
 		characterCriticalIsuConditions := []*TrendCondition{}
 		for _, isu := range isuList {
-			conditions := []IsuCondition{}
-			err = db.Select(&conditions,
-				"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY timestamp DESC",
-				isu.JIAIsuUUID,
-			)
-			if err != nil {
-				c.Logger().Errorf("db error: %v", err)
-				return c.NoContent(http.StatusInternalServerError)
+			conditions, ok := conditionsGroupByIsu[isu.JIAIsuUUID]
+			if !ok {
+				continue
 			}
 
 			if len(conditions) > 0 {
