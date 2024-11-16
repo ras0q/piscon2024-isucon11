@@ -1106,7 +1106,7 @@ var trendCache, _ = sc.New(func(_ context.Context, _ struct{}) ([]TrendResponse,
 	}
 
 	lastCondition := []IsuCondition{}
-	err = db.Select(&lastCondition, "SELECT * FROM `isu_condition` ic INNER JOIN (SELECT jia_isu_uuid, MAX(timestamp) AS max_timestamp FROM `isu_condition` GROUP BY jia_isu_uuid) AS latest ON ic.jia_isu_uuid = latest.jia_isu_uuid AND ic.timestamp = latest.max_timestamp")
+	err = db.Select(&lastCondition, "SELECT ic.* FROM `isu_condition` ic INNER JOIN (SELECT jia_isu_uuid, MAX(timestamp) AS max_timestamp FROM `isu_condition` GROUP BY jia_isu_uuid) AS latest ON ic.jia_isu_uuid = latest.jia_isu_uuid AND ic.timestamp = latest.max_timestamp")
 	if err != nil {
 		// c.Logger().Errorf("db error: %v", err)
 		// return c.NoContent(http.StatusInternalServerError)
