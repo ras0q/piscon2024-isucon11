@@ -287,7 +287,15 @@ func getUserIDFromSession(c echo.Context) (string, int, error) {
 	}
 
 	jiaUserID := _jiaUserID.(string)
-	if _, ok := userMap[jiaUserID]; !ok {
+	var count int
+
+	err = db.Get(&count, "SELECT COUNT(*) FROM `user` WHERE `jia_user_id` = ?",
+		jiaUserID)
+	if err != nil {
+		return "", http.StatusInternalServerError, fmt.Errorf("db error: %v", err)
+	}
+
+	if count == 0 {
 		return "", http.StatusUnauthorized, fmt.Errorf("not found: user")
 	}
 
@@ -303,7 +311,6 @@ func getJIAServiceURL(_ *sqlx.Tx) string {
 
 var characterList []string
 var jiaServiceURL string
-var userMap map[string]struct{}
 
 // POST /initialize
 // サービスを初期化
@@ -329,17 +336,6 @@ func postInitialize(c echo.Context) error {
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	users := []string{}
-	err = db.Select(&users, "SELECT `jia_user_id` FROM `user`")
-	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	for _, user := range users {
-		userMap[user] = struct{}{}
 	}
 
 	go runPostIsuConditionWorker()
