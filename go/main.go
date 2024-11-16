@@ -1231,14 +1231,13 @@ func postIsuCondition(c echo.Context) error {
 			return c.String(http.StatusBadRequest, "bad request body")
 		}
 
-		now := time.Now()
 		newConditions = append(newConditions, IsuCondition{
 			JIAIsuUUID: jiaIsuUUID,
 			Timestamp:  time.Unix(cond.Timestamp, 0),
 			IsSitting:  cond.IsSitting,
 			Condition:  cond.Condition,
 			Message:    cond.Message,
-			CreatedAt:  now,
+			CreatedAt:  time.Now(),
 		})
 	}
 	conditionsChan <- newConditions
