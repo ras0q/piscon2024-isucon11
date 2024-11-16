@@ -287,20 +287,29 @@ func getUserIDFromSession(c echo.Context) (string, int, error) {
 	}
 
 	jiaUserID := _jiaUserID.(string)
-	var count int
-
-	err = db.Get(&count, "SELECT COUNT(*) FROM `user` WHERE `jia_user_id` = ?",
-		jiaUserID)
-	if err != nil {
-		return "", http.StatusInternalServerError, fmt.Errorf("db error: %v", err)
-	}
-
-	if count == 0 {
+	if ok, err := userCache.Get(c.Request().Context(), jiaUserID); err != nil {
+		return "", http.StatusInternalServerError, fmt.Errorf("failed to get user cache: %v", err)
+	} else if !ok {
 		return "", http.StatusUnauthorized, fmt.Errorf("not found: user")
 	}
 
 	return jiaUserID, 0, nil
 }
+
+var userCache, _ = sc.New(func(ctx context.Context, jiaUserID string) (bool, error) {
+	var count int
+	err := db.Get(&count, "SELECT COUNT(*) FROM `user` WHERE `jia_user_id` = ?",
+		jiaUserID)
+	if err != nil {
+		return false, err
+	}
+
+	if count == 0 {
+		return false, nil
+	}
+
+	return true, nil
+}, 1*time.Minute, 1*time.Minute)
 
 func getJIAServiceURL(_ *sqlx.Tx) string {
 	if jiaServiceURL == "" {
