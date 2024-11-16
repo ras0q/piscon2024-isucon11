@@ -27,6 +27,8 @@ import (
 	"github.com/labstack/gommon/log"
 	"github.com/motoki317/sc"
 
+	"github.com/bytedance/sonic/decoder"
+	"github.com/bytedance/sonic/encoder"
 	"github.com/kaz/pprotein/integration/echov4"
 )
 
@@ -215,6 +217,7 @@ func main() {
 	e := echo.New()
 	e.Debug = true
 	e.Logger.SetLevel(log.DEBUG)
+	setupJSONSerializer(e)
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
@@ -1285,4 +1288,18 @@ func isValidConditionFormat(conditionStr string) bool {
 
 func getIndex(c echo.Context) error {
 	return c.File(frontendContentsPath + "/index.html")
+}
+
+type sonicJSONSerializer struct{}
+
+func (j *sonicJSONSerializer) Serialize(c echo.Context, i interface{}, _ string) error {
+	return encoder.NewStreamEncoder(c.Response()).Encode(i)
+}
+
+func (j *sonicJSONSerializer) Deserialize(c echo.Context, i interface{}) error {
+	return decoder.NewStreamDecoder(c.Request().Body).Decode(i)
+}
+
+func setupJSONSerializer(e *echo.Echo) {
+	e.JSONSerializer = &sonicJSONSerializer{}
 }
