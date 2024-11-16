@@ -338,7 +338,7 @@ func postInitialize(c echo.Context) error {
 
 	// TODO: remove later
 	go func() {
-		if _, err := http.Get("https://ras-pprotein2.trap.show/api/group/collect"); err != nil {
+		if _, err := http.Get("https://pprotein-cqdme5gvfcg7gwew.australiaeast-01.azurewebsites.net/api/group/collect"); err != nil {
 			c.Logger().Errorf("failed to communicate with pprotein: %v", err)
 		}
 	}()
