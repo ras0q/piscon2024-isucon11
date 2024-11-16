@@ -1105,27 +1105,14 @@ var trendCache, _ = sc.New(func(_ context.Context, _ struct{}) ([]TrendResponse,
 		isusGroupByCharacter[isu.Character] = append(isusGroupByCharacter[isu.Character], isu)
 	}
 
-	// 最新のコンディション情報しか使わなくていい
-	lastConditionIDs := []int{}
-	err = db.Select(&lastConditionIDs, "SELECT MAX(`id`) AS `id` FROM `isu_condition` GROUP BY `jia_isu_uuid`")
-	if err != nil {
-		// c.Logger().Errorf("db error: %v", err)
-		// return c.NoContent(http.StatusInternalServerError)
-		return nil, err
-	}
 	lastCondition := []IsuCondition{}
-	query, params, err := sqlx.In("SELECT * FROM `isu_condition` WHERE `id` IN (?)", lastConditionIDs)
+	err = db.Select(&lastCondition, "SELECT * FROM `isu_condition` ic INNER JOIN (SELECT jia_isu_uuid, MAX(timestamp) AS max_timestamp FROM `isu_condition` GROUP BY jia_isu_uuid) AS latest ON ic.jia_isu_uuid = latest.jia_isu_uuid AND ic.timestamp = latest.max_timestamp")
 	if err != nil {
 		// c.Logger().Errorf("db error: %v", err)
 		// return c.NoContent(http.StatusInternalServerError)
 		return nil, err
 	}
-	err = db.Select(&lastCondition, query, params...)
-	if err != nil {
-		// c.Logger().Errorf("db error: %v", err)
-		// return c.NoContent(http.StatusInternalServerError)
-		return nil, err
-	}
+
 	lastConditionMap := map[string]IsuCondition{}
 	for _, condition := range lastCondition {
 		lastConditionMap[condition.JIAIsuUUID] = condition
