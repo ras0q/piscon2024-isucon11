@@ -13,7 +13,7 @@ sudo rm -rf /var/log/mysql/mysql-slow.log \
   && sudo chown mysql:mysql /var/log/mysql/mysql-slow.log
 sudo rm -rf /var/log/nginx/access.log \
   && sudo touch /var/log/nginx/access.log \
-  && sudo chmod +r /var/log/nginx/access.logi
+  && sudo chmod +r /var/log/nginx/access.log
 
 cd go
 go build -o isucondition
