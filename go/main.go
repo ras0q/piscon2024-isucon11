@@ -347,8 +347,6 @@ func postInitialize(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	go runPostIsuConditionWorker()
-
 	// TODO: remove later
 	go func() {
 		if _, err := http.Get("https://pprotein-cqdme5gvfcg7gwew.australiaeast-01.azurewebsites.net/api/group/collect"); err != nil {
@@ -1239,40 +1237,24 @@ func postIsuCondition(c echo.Context) error {
 			Message:    cond.Message,
 		})
 	}
-	conditionsChan <- newConditions
+	_, err = tx.NamedExec(
+		"INSERT INTO `isu_condition`"+
+			"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`)"+
+			"	VALUES (:jia_isu_uuid, :timestamp, :is_sitting, :condition, :message)",
+		newConditions,
+	)
+	if err != nil {
+		c.Logger().Errorf("db error: %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		c.Logger().Errorf("db error: %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
 
 	return c.NoContent(http.StatusAccepted)
-}
-
-var conditionsChan = make(chan []IsuCondition, 10000)
-
-func runPostIsuConditionWorker() {
-	conditionsQueue := make([]IsuCondition, 0, 10000)
-
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case newConditions := <-conditionsChan:
-			conditionsQueue = append(conditionsQueue, newConditions...)
-		case <-ticker.C:
-			if len(conditionsQueue) == 0 {
-				continue
-			}
-
-			_, err := db.NamedExec(
-				"INSERT INTO `isu_condition`"+
-					"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`)"+
-					"	VALUES (:jia_isu_uuid, :timestamp, :is_sitting, :condition, :message)",
-				conditionsQueue,
-			)
-			if err != nil {
-				log.Printf("db error: %v", err)
-				continue
-			}
-		}
-	}
 }
 
 // ISUのコンディションの文字列がcsv形式になっているか検証
