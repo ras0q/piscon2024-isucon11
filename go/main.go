@@ -705,9 +705,7 @@ func getIsuIcon(c echo.Context) error {
 
 	jiaIsuUUID := c.Param("jia_isu_uuid")
 
-	var image []byte
-	err = db.Get(&image, "SELECT `image` FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ?",
-		jiaUserID, jiaIsuUUID)
+	image, err := iconCache.Get(c.Request().Context(), fmt.Sprintf("%v:%v", jiaUserID, jiaIsuUUID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c.String(http.StatusNotFound, "not found: isu")
@@ -719,6 +717,21 @@ func getIsuIcon(c echo.Context) error {
 
 	return c.Blob(http.StatusOK, "", image)
 }
+
+var iconCache, _ = sc.New(func(ctx context.Context, key string) ([]byte, error) {
+	ids := strings.Split(key, ":")
+	if len(ids) != 2 {
+		return nil, fmt.Errorf("invalid key")
+	}
+	jiaUserID, jiaIsuUUID := ids[0], ids[1]
+
+	image := []byte{}
+	err := db.Get(&image, "SELECT `image` FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ?", jiaUserID, jiaIsuUUID)
+	if err != nil {
+		return nil, err
+	}
+	return image, nil
+}, 1*time.Minute, 1*time.Minute)
 
 // GET /api/isu/:jia_isu_uuid/graph
 // ISUのコンディショングラフ描画のための情報を取得
