@@ -338,8 +338,6 @@ func postInitialize(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	c.Logger().Infof("users: %v", len(users))
-
 	for _, user := range users {
 		userMap[user] = struct{}{}
 	}
