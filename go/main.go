@@ -1237,6 +1237,7 @@ func postIsuCondition(c echo.Context) error {
 			IsSitting:  cond.IsSitting,
 			Condition:  cond.Condition,
 			Message:    cond.Message,
+			CreatedAt:  time.Now(),
 		})
 	}
 	conditionsChan <- newConditions
@@ -1263,8 +1264,8 @@ func runPostIsuConditionWorker() {
 
 			_, err := db.NamedExec(
 				"INSERT INTO `isu_condition`"+
-					"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`)"+
-					"	VALUES (:jia_isu_uuid, :timestamp, :is_sitting, :condition, :message)",
+					"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `created_at`)"+
+					"	VALUES (:jia_isu_uuid, :timestamp, :is_sitting, :condition, :message, :created_at)",
 				conditionsQueue,
 			)
 			if err != nil {
