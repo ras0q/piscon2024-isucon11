@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"database/sql"
 	"encoding/json"
@@ -24,6 +25,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
+	"github.com/motoki317/sc"
 
 	"github.com/kaz/pprotein/integration/echov4"
 )
@@ -1057,11 +1059,21 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 // GET /api/trend
 // ISUの性格毎の最新のコンディション情報
 func getTrend(c echo.Context) error {
-	allIsus := []Isu{}
-	err := db.Select(&allIsus, "SELECT * FROM `isu`")
+	res, err := trendCache.Get(context.Background(), struct{}{})
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+var trendCache, _ = sc.New(func(_ context.Context, _ struct{}) ([]TrendResponse, error) {
+	allIsus := []Isu{}
+	err := db.Select(&allIsus, "SELECT * FROM `isu`")
+	if err != nil {
+		// c.Logger().Errorf("db error: %v", err)
+		// return c.NoContent(http.StatusInternalServerError)
+		return nil, err
 	}
 	isusGroupByCharacter := map[string][]Isu{}
 	for _, isu := range allIsus {
@@ -1072,19 +1084,22 @@ func getTrend(c echo.Context) error {
 	lastConditionIDs := []int{}
 	err = db.Select(&lastConditionIDs, "SELECT MAX(`id`) AS `id` FROM `isu_condition` GROUP BY `jia_isu_uuid`")
 	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+		// c.Logger().Errorf("db error: %v", err)
+		// return c.NoContent(http.StatusInternalServerError)
+		return nil, err
 	}
 	lastCondition := []IsuCondition{}
 	query, params, err := sqlx.In("SELECT * FROM `isu_condition` WHERE `id` IN (?)", lastConditionIDs)
 	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+		// c.Logger().Errorf("db error: %v", err)
+		// return c.NoContent(http.StatusInternalServerError)
+		return nil, err
 	}
 	err = db.Select(&lastCondition, query, params...)
 	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+		// c.Logger().Errorf("db error: %v", err)
+		// return c.NoContent(http.StatusInternalServerError)
+		return nil, err
 	}
 	lastConditionMap := map[string]IsuCondition{}
 	for _, condition := range lastCondition {
@@ -1140,8 +1155,8 @@ func getTrend(c echo.Context) error {
 			})
 	}
 
-	return c.JSON(http.StatusOK, res)
-}
+	return res, nil
+}, 900*time.Millisecond, time.Minute)
 
 // POST /api/condition/:jia_isu_uuid
 // ISUからのコンディションを受け取る
