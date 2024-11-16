@@ -1235,7 +1235,7 @@ func postIsuCondition(c echo.Context) error {
 		"INSERT INTO `isu_condition`"+
 			"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`)"+
 			"	VALUES (:jia_isu_uuid, :timestamp, :is_sitting, :condition, :message)",
-		&newConditions,
+		newConditions,
 	)
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
