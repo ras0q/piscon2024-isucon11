@@ -331,7 +331,7 @@ func postInitialize(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	users := []string{}
+	var users []string
 	err = db.Select(&users, "SELECT `jia_user_id` FROM `user`")
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
