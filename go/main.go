@@ -1110,7 +1110,7 @@ func getTrend(c echo.Context) error {
 	// 最新のコンディション情報しか使わなくていい
 	// FIXME: HAVING使えない？
 	lastCondition := []IsuCondition{}
-	err = db.Select(&lastCondition, "SELECT MAX(`id`) AS `id`, MAX(`timestamp`) AS `timestamp`, `condition` FROM `isu_condition` GROUP BY `jia_isu_uuid` ORDER BY `timestamp` DESC")
+	err = db.Select(&lastCondition, "SELECT MAX(`id`) AS `id`, `jia_isu_uuid`, MAX(`timestamp`) AS `timestamp`, `condition` FROM `isu_condition` GROUP BY `jia_isu_uuid` ORDER BY `timestamp` DESC")
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
