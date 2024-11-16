@@ -297,17 +297,15 @@ func getUserIDFromSession(c echo.Context) (string, int, error) {
 	return jiaUserID, 0, nil
 }
 
-func getJIAServiceURL(tx *sqlx.Tx) string {
-	var config Config
-	err := tx.Get(&config, "SELECT * FROM `isu_association_config` WHERE `name` = ?", "jia_service_url")
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			log.Print(err)
-		}
+func getJIAServiceURL(_ *sqlx.Tx) string {
+	if jiaServiceURL == "" {
 		return defaultJIAServiceURL
 	}
-	return config.URL
+	return jiaServiceURL
 }
+
+var characterList []string
+var jiaServiceURL string
 
 // POST /initialize
 // サービスを初期化
@@ -327,13 +325,11 @@ func postInitialize(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	_, err = db.Exec(
-		"INSERT INTO `isu_association_config` (`name`, `url`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `url` = VALUES(`url`)",
-		"jia_service_url",
-		request.JIAServiceURL,
-	)
+	jiaServiceURL = request.JIAServiceURL
+
+	err = db.Select(&characterList, "SELECT `character` FROM `isu` GROUP BY `character`")
 	if err != nil {
-		c.Logger().Errorf("db error : %v", err)
+		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
@@ -1017,7 +1013,7 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 			"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ?"+
 				"	AND `timestamp` < ?"+
 				" AND `condition_level` IN (?)"+
-				"	ORDER BY `timestamp` DESC" +
+				"	ORDER BY `timestamp` DESC"+
 				" LIMIT ?",
 			jiaIsuUUID, endTime, conditionLevels, limit,
 		)
@@ -1027,7 +1023,7 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 				"	AND `timestamp` < ?"+
 				"	AND ? <= `timestamp`"+
 				" AND `condition_level` IN (?)"+
-				"	ORDER BY `timestamp` DESC" +
+				"	ORDER BY `timestamp` DESC"+
 				" LIMIT ?",
 			jiaIsuUUID, endTime, startTime, conditionLevels, limit,
 		)
@@ -1061,15 +1057,8 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 // GET /api/trend
 // ISUの性格毎の最新のコンディション情報
 func getTrend(c echo.Context) error {
-	characterList := []Isu{}
-	err := db.Select(&characterList, "SELECT `character` FROM `isu` GROUP BY `character`")
-	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
 	allIsus := []Isu{}
-	err = db.Select(&allIsus, "SELECT * FROM `isu`")
+	err := db.Select(&allIsus, "SELECT * FROM `isu`")
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -1105,7 +1094,7 @@ func getTrend(c echo.Context) error {
 	res := []TrendResponse{}
 
 	for _, character := range characterList {
-		isuList, ok := isusGroupByCharacter[character.Character]
+		isuList, ok := isusGroupByCharacter[character]
 		if !ok {
 			continue
 		}
@@ -1144,7 +1133,7 @@ func getTrend(c echo.Context) error {
 		})
 		res = append(res,
 			TrendResponse{
-				Character: character.Character,
+				Character: character,
 				Info:      characterInfoIsuConditions,
 				Warning:   characterWarningIsuConditions,
 				Critical:  characterCriticalIsuConditions,
